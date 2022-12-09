@@ -16,8 +16,21 @@ def TestOutline()
   new
   execute 'file ' .. bufferName
   execute "resize " .. 15
-  setlocal filetype=testoutline
-  setline(1, lines)
+  setlocal filetype=test-outline
+  var lineNumber = 0
+  for line in lines
+    #append(lineNumber, strlen(line))
+    append(lineNumber, line)
+    lineNumber += 1
+  endfor
+  setlocal readonly nomodifiable
+  # TODO
+  # Extract line number of describe, context or it and put it into the id field
+  # below
+  # Before removing, save which key word is in this line (describe, it or
+  # context) to use it for highlighting with prop_add
+	#call prop_type_add("blubb", { "highlight": "Search", "bufnr": bufnr(bufferName) })
+  #prop_add(1, 1, {  "length": 0, "type": "blubb", id: })
   nnoremap <script> <silent> <nowait> <buffer> q <scriptcmd>Close()<cr>
 enddef
 
