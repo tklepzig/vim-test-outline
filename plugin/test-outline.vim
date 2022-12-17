@@ -1,12 +1,18 @@
 vim9script
 
-var bufferName = "test-outline"
+const bufferName = "test-outline"
 
-var GetLineNr = (line: string) => {
+const GetLevel = (lastLine, currentIndent): number => {
+  if currentIndent > lastLine._indent
+    return lastLine.level + 1
+  elseif currentIndent < lastLine._indent
+    return lastLine.level - 1
+  endif
 
-  }
+  return lastLine.level
+}
 
-var GetType = (line: string): string => {
+const GetType = (line: string): string => {
   if line =~ "describe"
     return "describe"
   elseif line =~ "context"
@@ -15,71 +21,75 @@ var GetType = (line: string): string => {
     return "it"
   endif
   return "unknown"
-  }  
+}  
 
-var Build = (): list<any> => {
+const Build = (): list<any> => {
   const describes = execute('g/^\s*describe')
   const contexts = execute('g/^\s*context')
   const its = execute('g/^\s*it')
 
+  var result = map(sort(split(describes .. contexts .. its, "\n")), (_, x) => trim(x))
 
-  var result = map(split(describes .. contexts .. its, "\n"), (_, x) => trim(x))
-  #echo join(sort(result, (a, b) => a > b ? 1 : -1), "\n")
-
-  var blubb: list<any> = []
-  for line in result
+  return result->reduce((lines, line) => {
     const indent = match(line[stridx(trim(line), " ") :], "[^ ]")
-    #TODO: find way to have level instead of indent and start at 0, not 3 (bc
-    #of 3 spaces of the first describe block)
-    const lineNr = line[0 : stridx(trim(line), " ") - 1] 
+    const level = lines->len() > 0 ? GetLevel(lines[lines->len() - 1], indent) : 0
+    const lineNr = str2nr(line[0 : stridx(trim(line), " ") - 1]) 
     const text = trim(line[stridx(trim(line), " ") :])
-    ->substitute("' do", "", "g")
-    ->substitute("it '", "it ", "g")
-    ->substitute("context '", "", "g")
-    ->substitute("describe '", "", "g")
+      ->substitute("' do", "", "g")
+      ->substitute("it '", "it ", "g")
+      ->substitute("context '", "", "g")
+      ->substitute("describe '", "", "g")
+    return lines->add({
+      type: GetType(line),
+      lineNr: lineNr,
+      text: text,
+      _indent: indent,
+      level: level })
+  }, [])
+}
 
-    blubb->add({
-    type: GetType(line),
-    lineNr: lineNr,
-    text: text,
-    indent: indent})
-  endfor
-  return sort(blubb, (a, b) => a.lineNr->str2nr() > b.lineNr->str2nr() ? 1 : -1)
-  }
+const Select = () => {
+  const props = prop_list(line("."))
 
-var TestOutline = () => {
-  var result = Build()
-  var lines = result->map((_, x) => x.text)
+  if len(props) == 1
+    echo props[0].id
+    # TODO: select line in correct buffer
+  endif
+}
+
+const TestOutline = () => {
+  var outline = Build()
 
   new
   execute 'file ' .. bufferName
   execute "resize " .. 15
   setlocal filetype=test-outline
+
+  prop_type_add("describe", { "highlight": "TestOutlineDescribe", "bufnr": bufnr(bufferName) })
+  prop_type_add("context", { "highlight": "TestOutlineContext", "bufnr": bufnr(bufferName) })
+  prop_type_add("it", { "highlight": "TestOutlineIt", "bufnr": bufnr(bufferName) })
+
   var lineNumber = 0
-  for line in lines
-    #append(lineNumber, strlen(line))
+  for item in outline
+    const line = repeat("  ", item.level) .. item.text
     append(lineNumber, line)
     lineNumber += 1
+    prop_add(lineNumber, 1, { length: strlen(line), type: item.type, id: item.lineNr })
   endfor
   setlocal readonly nomodifiable
-  # TODO
-  # Extract line number of describe, context or it and put it into the id field
-  # below
-  # Before removing, save which key word is in this line (describe, it or
-  # context) to use it for highlighting with prop_add
-  #call prop_type_add("blubb", { "highlight": "Search", "bufnr": bufnr(bufferName) })
-  #prop_add(1, 1, {  "length": 0, "type": "blubb", id: })
+
   nnoremap <script> <silent> <nowait> <buffer> q <scriptcmd>Close()<cr>
-  }
+  nnoremap <script> <silent> <nowait> <buffer> o <scriptcmd>Select()<cr>
+}
 
 command! TestOutline TestOutline()
 
-var Close = () => {
+const Close = () => {
   var outlineBuffer = bufnr(bufferName)
   if outlineBuffer > 0 && bufexists(outlineBuffer)
     execute 'bwipeout! ' .. outlineBuffer
   endif
-  }
+}
 
 # temp
 nnoremap <silent> <leader>to :TestOutline<cr>
