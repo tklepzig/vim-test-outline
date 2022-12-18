@@ -2,15 +2,9 @@ vim9script
 
 const bufferName = "test-outline"
 
-const GetLevel = (lastLine, currentIndent): number => {
-  if currentIndent > lastLine._indent
-    return lastLine.level + 1
-  elseif currentIndent < lastLine._indent
-    return lastLine.level - 1
-  endif
+const GetIndent = (line): number => 
+  match(line[stridx(trim(line), " ") :], "[^ ]")
 
-  return lastLine.level
-}
 
 const GetType = (line: string): string => {
   if line =~ "describe"
@@ -30,9 +24,10 @@ const Build = (): list<any> => {
 
   var result = map(sort(split(describes .. contexts .. its, "\n")), (_, x) => trim(x))
 
+  const firstIndent = GetIndent(result[0])
+
   return result->reduce((lines, line) => {
-    const indent = match(line[stridx(trim(line), " ") :], "[^ ]")
-    const level = lines->len() > 0 ? GetLevel(lines[lines->len() - 1], indent) : 0
+    const indent = GetIndent(line) - firstIndent
     const lineNr = str2nr(line[0 : stridx(trim(line), " ") - 1]) 
     const text = trim(line[stridx(trim(line), " ") :])
       ->substitute("' do", "", "g")
@@ -43,8 +38,7 @@ const Build = (): list<any> => {
       type: GetType(line),
       lineNr: lineNr,
       text: text,
-      _indent: indent,
-      level: level })
+      indent: indent })
   }, [])
 }
 
@@ -60,9 +54,11 @@ const Select = () => {
 const TestOutline = () => {
   var outline = Build()
 
-  new
+  #new
+  #execute "resize " .. 15
+  aboveleft vnew
+  execute "vertical resize " .. 50
   execute 'file ' .. bufferName
-  execute "resize " .. 15
   setlocal filetype=test-outline
 
   prop_type_add("describe", { "highlight": "TestOutlineDescribe", "bufnr": bufnr(bufferName) })
@@ -71,7 +67,7 @@ const TestOutline = () => {
 
   var lineNumber = 0
   for item in outline
-    const line = repeat("  ", item.level) .. item.text
+    const line = repeat(" ", item.indent) .. item.text
     append(lineNumber, line)
     lineNumber += 1
     prop_add(lineNumber, 1, { length: strlen(line), type: item.type, id: item.lineNr })
