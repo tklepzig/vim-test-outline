@@ -1,6 +1,8 @@
 vim9script
 
 const bufferName = "test-outline"
+var previousBufferNr = -1
+var previousWinId = -1
 
 const GetIndent = (line): number => 
   match(line[stridx(trim(line), " ") :], "[^ ]")
@@ -16,6 +18,16 @@ const GetType = (line: string): string => {
   endif
   return "unknown"
 }  
+
+const Close = () => {
+  var outlineBuffer = bufnr(bufferName)
+  if outlineBuffer > 0 && bufexists(outlineBuffer)
+    if previousWinId > 0
+      win_gotoid(previousWinId)
+    endif
+    execute 'bwipeout! ' .. outlineBuffer
+  endif
+}
 
 const Build = (): list<any> => {
   const describes = execute('g/^\s*describe')
@@ -42,18 +54,38 @@ const Build = (): list<any> => {
   }, [])
 }
 
-const Select = () => {
-  const props = prop_list(line("."))
+const SelectBufferLine = (lineNr: number) => {
+  win_gotoid(previousWinId)
+  execute 'silent buffer ' .. previousBufferNr
+  setpos(".", [previousBufferNr, lineNr, 1])
+}
 
-  if len(props) == 1
-    echo props[0].id
-    # TODO: select line in correct buffer
+const Preview = () => {
+  const props = prop_list(line("."))
+  if len(props) == 0
+    return
   endif
+
+  const curWinId = win_getid()
+  SelectBufferLine(props[0].id)
+  win_gotoid(curWinId)
+}
+
+const Select = (preview = false) => {
+  const props = prop_list(line("."))
+  if len(props) == 0
+    return
+  endif
+
+  Close()
+  SelectBufferLine(props[0].id)
 }
 
 const TestOutline = () => {
   var outline = Build()
 
+  previousBufferNr = bufnr("%")
+  previousWinId = win_getid()
   #new
   #execute "resize " .. 15
   aboveleft vnew
@@ -76,16 +108,10 @@ const TestOutline = () => {
 
   nnoremap <script> <silent> <nowait> <buffer> q <scriptcmd>Close()<cr>
   nnoremap <script> <silent> <nowait> <buffer> o <scriptcmd>Select()<cr>
+  nnoremap <script> <silent> <nowait> <buffer> p <scriptcmd>Preview()<cr>
 }
 
 command! TestOutline TestOutline()
-
-const Close = () => {
-  var outlineBuffer = bufnr(bufferName)
-  if outlineBuffer > 0 && bufexists(outlineBuffer)
-    execute 'bwipeout! ' .. outlineBuffer
-  endif
-}
 
 # temp
 nnoremap <silent> <leader>to :TestOutline<cr>
