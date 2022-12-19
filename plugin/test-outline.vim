@@ -58,6 +58,10 @@ const Build = (): list<any> => {
       ->substitute("it '", "it ", "g")
       ->substitute("context '", "", "g")
       ->substitute("describe '", "", "g")
+    # TODO how to distinguish ruby or jest?
+      #->substitute("describe('", "", "g")
+      #->substitute("it('", "it ", "g")
+      #->substitute("', () => {", "", "g")
     return lines->add({
       type: GetType(line),
       lineNr: lineNr,
