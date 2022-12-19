@@ -71,7 +71,7 @@ const Preview = () => {
   win_gotoid(curWinId)
 }
 
-const Select = (preview = false) => {
+const Select = () => {
   const props = prop_list(line("."))
   if len(props) == 0
     return
@@ -81,15 +81,20 @@ const Select = (preview = false) => {
   SelectBufferLine(props[0].id)
 }
 
-const TestOutline = () => {
+const TestOutline = (vertical = false) => {
   var outline = Build()
 
   previousBufferNr = bufnr("%")
   previousWinId = win_getid()
-  #new
-  #execute "resize " .. 15
-  aboveleft vnew
-  execute "vertical resize " .. 50
+
+  if vertical
+    aboveleft vnew
+    execute "vertical resize " .. 50
+  else
+    new
+    execute "resize " .. 15
+  endif
+
   execute 'file ' .. bufferName
   setlocal filetype=test-outline
 
@@ -112,6 +117,7 @@ const TestOutline = () => {
 }
 
 command! TestOutline TestOutline()
+command! TestVOutline TestOutline(true)
 
 # temp
-nnoremap <silent> <leader>to :TestOutline<cr>
+nnoremap <silent> <leader>to :TestVOutline<cr>
