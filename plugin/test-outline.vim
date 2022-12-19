@@ -29,12 +29,24 @@ const Close = () => {
   endif
 }
 
+const CollectBlocks = (keyword: string): string => {
+  try
+    return execute('g/^\s*' .. keyword)
+  catch
+    return ""
+  endtry
+}
+
 const Build = (): list<any> => {
-  const describes = execute('g/^\s*describe')
-  const contexts = execute('g/^\s*context')
-  const its = execute('g/^\s*it')
+  const describes = CollectBlocks("describe")
+  const contexts = CollectBlocks("context")
+  const its = CollectBlocks("it")
 
   var result = map(sort(split(describes .. contexts .. its, "\n")), (_, x) => trim(x))
+
+  if len(result) == 0
+    return []
+  endif
 
   const firstIndent = GetIndent(result[0])
 
@@ -83,6 +95,13 @@ const Select = () => {
 
 const TestOutline = (vertical = false) => {
   var outline = Build()
+
+  if len(outline) == 0
+    echohl ErrorMsg
+    echo  "Not a valid test file"
+    echohl None
+    return
+  endif
 
   previousBufferNr = bufnr("%")
   previousWinId = win_getid()
