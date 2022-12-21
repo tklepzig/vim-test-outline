@@ -1,6 +1,7 @@
 vim9script
 
 const bufferName = "test-outline"
+var orientation = "vertical"
 var previousBufferNr = -1
 var previousWinId = -1
 
@@ -59,9 +60,9 @@ const Build = (): list<any> => {
       ->substitute("context '", "", "g")
       ->substitute("describe '", "", "g")
     # TODO how to distinguish ruby or jest?
-      #->substitute("describe('", "", "g")
-      #->substitute("it('", "it ", "g")
-      #->substitute("', () => {", "", "g")
+    #->substitute("describe('", "", "g")
+    #->substitute("it('", "it ", "g")
+    #->substitute("', () => {", "", "g")
     return lines->add({
       type: GetType(line),
       lineNr: lineNr,
@@ -97,8 +98,30 @@ const Select = () => {
   SelectBufferLine(props[0].id)
 }
 
-const TestOutline = (vertical = false) => {
-  var outline = Build()
+const ToggleOrientation = () => {
+  if (bufname("%") != bufferName)
+    return
+  endif
+
+  if orientation == "vertical"
+    orientation = "horizontal"
+    wincmd K
+    wincmd J
+    execute "resize " .. 10
+  else
+    orientation = "vertical"
+    wincmd H
+    execute "vertical resize " .. 40
+  endif
+}
+
+const TestOutline = () => {
+  var outlineBuffer = bufnr(bufferName)
+  if outlineBuffer > 0 && bufexists(outlineBuffer)
+    return
+  endif
+
+  const outline = Build()
 
   if len(outline) == 0
     echohl ErrorMsg
@@ -110,12 +133,12 @@ const TestOutline = (vertical = false) => {
   previousBufferNr = bufnr("%")
   previousWinId = win_getid()
 
-  if vertical
-    aboveleft vnew
-    execute "vertical resize " .. 50
-  else
+  if orientation == "horizontal"
     new
-    execute "resize " .. 15
+    execute "resize " .. 10
+  else
+    aboveleft vnew
+    execute "vertical resize " .. 40
   endif
 
   execute 'file ' .. bufferName
@@ -134,13 +157,24 @@ const TestOutline = (vertical = false) => {
   endfor
   setlocal readonly nomodifiable
 
+  nnoremap <script> <silent> <nowait> <buffer> m <scriptcmd>ToggleOrientation()<cr>
   nnoremap <script> <silent> <nowait> <buffer> q <scriptcmd>Close()<cr>
   nnoremap <script> <silent> <nowait> <buffer> o <scriptcmd>Select()<cr>
   nnoremap <script> <silent> <nowait> <buffer> p <scriptcmd>Preview()<cr>
 }
 
-command! TestOutline TestOutline()
-command! TestVOutline TestOutline(true)
+const Toggle = () => {
+  var outlineBuffer = bufnr(bufferName)
+  if outlineBuffer > 0 && bufexists(outlineBuffer)
+    Close()
+  else
+    TestOutline()
+  endif
+}
+
+command! TestOutlineOpen TestOutline()
+command! TestOutlineClose Close()
+command! TestOutlineToggle Toggle()
 
 # temp
-nnoremap <silent> <leader>to :TestVOutline<cr>
+nnoremap <silent> <leader>to :TestOutlineToggle<cr>
