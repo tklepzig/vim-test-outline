@@ -16,10 +16,16 @@ var previousBufferNr = -1
 var previousWinId = -1
 
 const config = {
-  "ruby": [{ pattern: "describe '(.*)'", highlight: "TestOutlineDescribe" },
-    { pattern: "def (.*)$", highlight: "TestOutlineIt" },
-    { pattern: "class (.*)$", highlight: "TestOutlineContext" },
-    { pattern: "module (.*)$", highlight: "TestOutlineContext" }] }
+  "ruby":
+    [{ pattern: "describe '(.*)'", highlight: "TestOutlineDescribe" },
+     { pattern: 'def (.*)$', highlight: "TestOutlineIt" },
+     { pattern: 'class (.*)$', highlight: "TestOutlineContext" },
+     { pattern: 'class (.*)$', highlight: "TestOutlineContext" },
+     { pattern: 'module (.*)$', highlight: "TestOutlineContext" }],
+  "typescript.tsx":
+    [{ pattern: '.*const([^=]*) \= \(.*\) \=\>.*$', highlight: "TestOutlineIt" }],
+  "typescript":
+    [{ pattern: '.*const([^=]*) \= \(.*\) \=\>.*$', highlight: "TestOutlineIt" }] }
 
 const Build = (): list<any> => {
   const items = config->get(&filetype, [])
