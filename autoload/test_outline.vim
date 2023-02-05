@@ -17,16 +17,16 @@ var previousWinId = -1
 
 const config = {
   "ruby":
-    [{ pattern: "describe '(.*)'", highlight: "TestOutlineDescribe" },
-     { pattern: "context '(.*)'", highlight: "TestOutlineContext" },
-     { pattern: "it '(.*)'", highlight: "TestOutlineIt" },
-     { pattern: 'def (.*)$', highlight: "rubyMethodName" },
-     { pattern: 'class (.*)$', highlight: "rubyClassName" },
-     { pattern: 'module (.*)$', highlight: "rubyModuleName" }],
+    [{ pattern: "describe '(.*)'.*$" },
+     { pattern: "context '(.*)'.*$", highlight: "TestOutlineHighlight2" },
+     { pattern: "it '(.*)'.*$", highlight: "TestOutlineHighlight1" },
+     { pattern: 'def (.*)$', highlight: "TestOutlineHighlight1" },
+     { pattern: 'class (.*)$', highlight: "TestOutlineHighlight2" },
+     { pattern: 'module (.*)$', highlight: "TestOutlineHighlight2" }],
   "typescript.tsx":
-    [{ pattern: '.*const([^=]*) \= \(.*\) \=\>.*$', highlight: "typescriptVariableDeclaration" }],
+    [{ pattern: '.*const([^=]*) \= \(.*\) \=\>.*$' }],
   "typescript":
-    [{ pattern: '.*const([^=]*) \= \(.*\) \=\>.*$', highlight: "typescriptVariableDeclaration" }] }
+    [{ pattern: '.*const([^=]*) \= \(.*\) \=\>.*$' }] }
 
 const Build = (): list<any> => {
   const items = config->get(&filetype, [])
@@ -57,7 +57,7 @@ const Build = (): list<any> => {
     var lines = map(split(matches, "\n"), (_, x) => trim(x))
 
     const entries = lines->mapnew((_, line) => ({
-      highlight: item.highlight,
+      highlight: item->get("highlight", ""),
       lineNr: str2nr(line[0 : stridx(trim(line), " ") - 1]),
       text: trim(line[stridx(trim(line), " ") :])
         ->substitute('\v' .. item.pattern, '\1', "g"),
@@ -152,7 +152,13 @@ export const Open = () => {
   execute "file " .. bufferName
   setlocal filetype=test-outline
 
-  const highlights = mapnew(outline, (_, item) => item.highlight)->sort()->uniq()
+  const highlights = outline
+                      ->copy()
+                      ->filter((_, item) => item.highlight->len() > 0)
+                      ->map((_, item) => item.highlight)
+                      ->sort()
+                      ->uniq()
+
   for highlight in highlights
     prop_type_add(highlight, { "highlight": highlight, "bufnr": bufnr(bufferName) })
   endfor
@@ -162,7 +168,9 @@ export const Open = () => {
     const line = repeat(" ", item.indent) .. item.text
     append(lineNumber, line)
     lineNumber += 1
-    prop_add(lineNumber, 1, { length: strlen(line), type: item.highlight, id: item.lineNr })
+    if item.highlight->len() > 0
+      prop_add(lineNumber, 1, { length: strlen(line), type: item.highlight, id: item.lineNr })
+    endif
   endfor
   setlocal readonly nomodifiable
 
