@@ -179,6 +179,8 @@ export const Open = () => {
   endfor
   setlocal readonly nomodifiable
 
+  setpos(".", [0, 1, 1])
+
   nnoremap <script> <silent> <nowait> <buffer> m <scriptcmd>ToggleOrientation()<cr>
   nnoremap <script> <silent> <nowait> <buffer> q <scriptcmd>Close()<cr>
   nnoremap <script> <silent> <nowait> <buffer> o <scriptcmd>Select()<cr>
