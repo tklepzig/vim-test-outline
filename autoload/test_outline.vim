@@ -15,21 +15,25 @@ var orientation = ConfigOrientation()
 var previousBufferNr = -1
 var previousWinId = -1
 
-const config = {
-  "ruby":
-    [{ pattern: "describe '(.*)'.*$" },
-     { pattern: "context '(.*)'.*$", highlight: "TestOutlineHighlight2" },
-     { pattern: "it '(.*)'.*$", highlight: "TestOutlineHighlight1" },
-     { pattern: 'def (.*)$', highlight: "TestOutlineHighlight1" },
-     { pattern: 'class (.*)$', highlight: "TestOutlineHighlight2" },
-     { pattern: 'module (.*)$', highlight: "TestOutlineHighlight2" }],
-  "typescript.tsx":
-    [{ pattern: '.*const([^=]*) \= \(.*\) \=\>.*$' }],
-  "typescript":
-    [{ pattern: '.*const([^=]*) \= \(.*\) \=\>.*$' }] }
+const rules = {
+  "ruby": [
+    [ "describe '(.*)'.*$" ],
+    [ "context '(.*)'.*$", "TestOutlineHighlight2" ],
+    [ "it '(.*)'.*$", "TestOutlineHighlight1" ],
+    [ 'def (.*)$', "TestOutlineHighlight1" ],
+    [ 'class (.*)$', "TestOutlineHighlight2" ],
+    [ 'module (.*)$', "TestOutlineHighlight2" ]
+  ],
+  "typescript.tsx": [
+      [ '.*const([^=]*) \= \(.*\) \=\>.*$' ]
+    ],
+  "typescript": [
+      [ '.*const([^=]*) \= \(.*\) \=\>.*$' ]
+    ],
+}
 
 const Build = (): list<any> => {
-  const items = config->get(&filetype, [])
+  const items = rules->get(&filetype, [])
 
   # Doing it with reduce does not work since for whatever reason the catch
   # from utils.CollectBlocks stops the reduce which occurs if no matching line
@@ -52,15 +56,16 @@ const Build = (): list<any> => {
 
 
   var result = []
-  for item in items
-    const matches = utils.CollectBlocks(item.pattern)
+  for [pattern; rest] in items
+    const highlight = rest->len() > 0 ? rest[0] : ""
+    const matches = utils.CollectBlocks(pattern)
     var lines = map(split(matches, "\n"), (_, x) => trim(x))
 
     const entries = lines->mapnew((_, line) => ({
-      highlight: item->get("highlight", ""),
+      highlight: highlight,
       lineNr: str2nr(line[0 : stridx(trim(line), " ") - 1]),
       text: trim(line[stridx(trim(line), " ") :])
-        ->substitute('\v' .. item.pattern, '\1', "g"),
+        ->substitute('\v' .. pattern, '\1', "g"),
       indent: utils.GetIndent(line) }))
 
     result += entries
@@ -133,7 +138,7 @@ export const Open = () => {
 
   if len(outline) == 0
     echohl ErrorMsg
-    echo  "No matching lines found"
+    echo  "No matching rules found"
     echohl None
     return
   endif
@@ -152,14 +157,14 @@ export const Open = () => {
   execute "file " .. bufferName
   setlocal filetype=test-outline
 
-  const highlights = outline
+  const uniqueHighlights = outline
                       ->copy()
                       ->filter((_, item) => item.highlight->len() > 0)
                       ->map((_, item) => item.highlight)
                       ->sort()
                       ->uniq()
 
-  for highlight in highlights
+  for highlight in uniqueHighlights
     prop_type_add(highlight, { "highlight": highlight, "bufnr": bufnr(bufferName) })
   endfor
 
