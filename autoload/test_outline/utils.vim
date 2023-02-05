@@ -16,7 +16,7 @@ export const GetType = (line: string): string => {
 
 export const CollectBlocks = (keyword: string): string => {
   try
-    return execute('g/^\s*' .. keyword)
+    return execute('g/\v^\s*' .. keyword)
   catch
     return ""
   endtry

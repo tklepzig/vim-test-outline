@@ -15,37 +15,51 @@ var orientation = ConfigOrientation()
 var previousBufferNr = -1
 var previousWinId = -1
 
+const config = {
+  "ruby": [{ pattern: "describe '(.*)'", highlight: "TestOutlineDescribe" },
+    { pattern: "def (.*)$", highlight: "TestOutlineIt" },
+    { pattern: "class (.*)$", highlight: "TestOutlineContext" },
+    { pattern: "module (.*)$", highlight: "TestOutlineContext" }] }
+
 const Build = (): list<any> => {
-  const describes = utils.CollectBlocks("describe")
-  const contexts = utils.CollectBlocks("context")
-  const its = utils.CollectBlocks("it")
+  const items = config->get(&filetype, [])
 
-  var result = map(sort(split(describes .. contexts .. its, "\n")), (_, x) => trim(x))
+  # Doing it with reduce does not work since for whatever reason the catch
+  # from utils.CollectBlocks stops the reduce which occurs if no matching line
+  # is found for the current item?!
+  #return items
+    #->reduce((result, item) => {
+      #const matches = utils.CollectBlocks(item.pattern)
+      #var lines = map(split(matches, "\n"), (_, x) => trim(x))
 
-  if len(result) == 0
-    return []
-  endif
+      #const entries = lines->mapnew((_, line) => ({
+          #highlight: item.highlight,
+          #lineNr: str2nr(line[0 : stridx(trim(line), " ") - 1]),
+          #text: trim(line[stridx(trim(line), " ") :])
+          #->substitute('\v' .. item.pattern, '\1', "g"),
+          #indent: utils.GetIndent(line) }))
 
-  const firstIndent = utils.GetIndent(result[0])
+      #return result + entries
+    #}, [])
+    #->sort((a, b) => a.lineNr > b.lineNr ? 1 : -1)
 
-  return result->reduce((lines, line) => {
-    const indent = utils.GetIndent(line) - firstIndent
-    const lineNr = str2nr(line[0 : stridx(trim(line), " ") - 1]) 
-    const text = trim(line[stridx(trim(line), " ") :])
-      ->substitute("' do", "", "g")
-      ->substitute("it '", "it ", "g")
-      ->substitute("context '", "", "g")
-      ->substitute("describe '", "", "g")
-    # TODO how to distinguish ruby or jest?
-    #->substitute("describe('", "", "g")
-    #->substitute("it('", "it ", "g")
-    #->substitute("', () => {", "", "g")
-    return lines->add({
-      type: utils.GetType(line),
-      lineNr: lineNr,
-      text: text,
-      indent: indent })
-  }, [])
+
+  var result = []
+  for item in items
+    const matches = utils.CollectBlocks(item.pattern)
+    var lines = map(split(matches, "\n"), (_, x) => trim(x))
+
+    const entries = lines->mapnew((_, line) => ({
+      highlight: item.highlight,
+      lineNr: str2nr(line[0 : stridx(trim(line), " ") - 1]),
+      text: trim(line[stridx(trim(line), " ") :])
+        ->substitute('\v' .. item.pattern, '\1', "g"),
+      indent: utils.GetIndent(line) }))
+
+    result += entries
+  endfor
+
+  return result->sort((a, b) => a.lineNr > b.lineNr ? 1 : -1)
 }
 
 export const Close = () => {
@@ -112,7 +126,7 @@ export const Open = () => {
 
   if len(outline) == 0
     echohl ErrorMsg
-    echo  "Not a valid test file"
+    echo  "No matching lines found"
     echohl None
     return
   endif
@@ -131,22 +145,24 @@ export const Open = () => {
   execute "file " .. bufferName
   setlocal filetype=test-outline
 
-  prop_type_add("describe", { "highlight": "TestOutlineDescribe", "bufnr": bufnr(bufferName) })
-  prop_type_add("context", { "highlight": "TestOutlineContext", "bufnr": bufnr(bufferName) })
-  prop_type_add("it", { "highlight": "TestOutlineIt", "bufnr": bufnr(bufferName) })
+  const highlights = mapnew(outline, (_, item) => item.highlight)->sort()->uniq()
+  for highlight in highlights
+    prop_type_add(highlight, { "highlight": highlight, "bufnr": bufnr(bufferName) })
+  endfor
 
   var lineNumber = 0
   for item in outline
     const line = repeat(" ", item.indent) .. item.text
     append(lineNumber, line)
     lineNumber += 1
-    prop_add(lineNumber, 1, { length: strlen(line), type: item.type, id: item.lineNr })
+    prop_add(lineNumber, 1, { length: strlen(line), type: item.highlight, id: item.lineNr })
   endfor
   setlocal readonly nomodifiable
 
   nnoremap <script> <silent> <nowait> <buffer> m <scriptcmd>ToggleOrientation()<cr>
   nnoremap <script> <silent> <nowait> <buffer> q <scriptcmd>Close()<cr>
   nnoremap <script> <silent> <nowait> <buffer> o <scriptcmd>Select()<cr>
+  nnoremap <script> <silent> <nowait> <buffer> <cr> <scriptcmd>Select()<cr>
   nnoremap <script> <silent> <nowait> <buffer> p <scriptcmd>Preview()<cr>
 }
 
