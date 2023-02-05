@@ -18,14 +18,15 @@ var previousWinId = -1
 const config = {
   "ruby":
     [{ pattern: "describe '(.*)'", highlight: "TestOutlineDescribe" },
-     { pattern: 'def (.*)$', highlight: "TestOutlineIt" },
-     { pattern: 'class (.*)$', highlight: "TestOutlineContext" },
-     { pattern: 'class (.*)$', highlight: "TestOutlineContext" },
-     { pattern: 'module (.*)$', highlight: "TestOutlineContext" }],
+     { pattern: "context '(.*)'", highlight: "TestOutlineContext" },
+     { pattern: "it '(.*)'", highlight: "TestOutlineIt" },
+     { pattern: 'def (.*)$', highlight: "rubyMethodName" },
+     { pattern: 'class (.*)$', highlight: "rubyClassName" },
+     { pattern: 'module (.*)$', highlight: "rubyModuleName" }],
   "typescript.tsx":
-    [{ pattern: '.*const([^=]*) \= \(.*\) \=\>.*$', highlight: "TestOutlineIt" }],
+    [{ pattern: '.*const([^=]*) \= \(.*\) \=\>.*$', highlight: "typescriptVariableDeclaration" }],
   "typescript":
-    [{ pattern: '.*const([^=]*) \= \(.*\) \=\>.*$', highlight: "TestOutlineIt" }] }
+    [{ pattern: '.*const([^=]*) \= \(.*\) \=\>.*$', highlight: "typescriptVariableDeclaration" }] }
 
 const Build = (): list<any> => {
   const items = config->get(&filetype, [])
