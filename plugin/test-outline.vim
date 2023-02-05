@@ -7,4 +7,4 @@ command! TestOutlineClose main.Close()
 command! TestOutlineToggle main.Toggle()
 
 # temp
-nnoremap <silent> <leader>to :TestOutlineToggle<cr>
+nnoremap <silent> <leader><leader> :TestOutlineToggle<cr>
