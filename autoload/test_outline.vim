@@ -55,6 +55,7 @@ const Build = (): list<any> => {
     #->sort((a, b) => a.lineNr > b.lineNr ? 1 : -1)
 
 
+  const view = winsaveview()
   var result = []
   for [pattern; rest] in items
     const highlight = rest->len() > 0 ? rest[0] : ""
@@ -70,6 +71,7 @@ const Build = (): list<any> => {
 
     result += entries
   endfor
+  winrestview(view)
 
   return result->sort((a, b) => a.lineNr > b.lineNr ? 1 : -1)
 }
@@ -134,6 +136,10 @@ export const Open = () => {
     return
   endif
 
+  const previousLineNr = line(".")
+  previousBufferNr = bufnr("%")
+  previousWinId = win_getid()
+
   const outline = Build()
 
   if len(outline) == 0
@@ -142,9 +148,6 @@ export const Open = () => {
     echohl None
     return
   endif
-
-  previousBufferNr = bufnr("%")
-  previousWinId = win_getid()
 
   if orientation == "horizontal"
     new
@@ -168,6 +171,8 @@ export const Open = () => {
     prop_type_add(highlight, { "highlight": highlight, "bufnr": bufnr(bufferName) })
   endfor
 
+  var selectedOutlineLineNr = 1
+
   var lineNumber = 0
   for item in outline
     const line = repeat(" ", item.indent) .. item.text
@@ -176,10 +181,14 @@ export const Open = () => {
     if item.highlight->len() > 0
       prop_add(lineNumber, 1, { length: strlen(line), type: item.highlight, id: item.lineNr })
     endif
+
+    if item.lineNr == previousLineNr
+      selectedOutlineLineNr = lineNumber
+    endif
   endfor
   setlocal readonly nomodifiable
 
-  setpos(".", [0, 1, 1])
+  setpos(".", [bufnr(bufferName), selectedOutlineLineNr, 1])
 
   nnoremap <script> <silent> <nowait> <buffer> m <scriptcmd>ToggleOrientation()<cr>
   nnoremap <script> <silent> <nowait> <buffer> q <scriptcmd>Close()<cr>
