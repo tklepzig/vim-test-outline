@@ -1,3 +1,5 @@
+# Deprecated, will be continued in tklepzig/vim.outline
+
 # TODO
 
 DRAFT
